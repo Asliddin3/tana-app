@@ -1,0 +1,43 @@
+{
+    "host":"localhost:8000/api/test",
+    "equipments":[
+        {
+            "name":"Maglumi800 1",
+            "equipment": "Maglumi800",
+            "type": "comport",
+            "baudRate": 9600,
+            "parity":"",
+            "stopBit":1,
+            "dataBits":8
+        },{
+            "name":"Biossays240Plus 1",
+            "equipment": "Biossays240",
+            "type": "comport",
+            "baudRate": 9600,
+            "parity":"",
+            "stopBit":1,
+            "dataBits":8
+        },{
+            "name":"Cobas-c311 1",
+            "equipment": "Cobas-c311",
+            "type": "comport",
+            "baudRate": 9600,
+            "parity":"ODD",
+            "stopBit":2,
+            "dataBits":8
+        },{
+            "name":"Cobas-c411 1",
+            "equipment": "Cobas-e411",
+            "type": "comport",
+            "baudRate": 9600,
+            "parity":"EVEN",
+            "stopBit":2,
+            "dataBits":8
+        },{
+            "name":"DymindDF50 1",
+            "equipment":"DymindDF50",
+            "type": "host",
+            "host":"localhost:5600"
+        }
+    ]
+}

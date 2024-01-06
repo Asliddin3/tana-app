@@ -1,0 +1,26 @@
+{
+    "host": "localhost:9201",
+    "monitorHost": "localhost",
+    "type": "lis",
+    "socketHost": "localhost:123123",
+    "equipments": [
+        {
+            "name": "Maglumi800 1",
+            "equipment": "Maglumi800",
+            "type": "host",
+            "host": "localhost:8000"
+        },
+        {
+            "name": "Biossays240Plus 1",
+            "equipment": "Biossays240",
+            "type": "host",
+            "host": "localhost:9000"
+        },
+        {
+            "name": "Iflash1200 1",
+            "equipment": "Iflash1200",
+            "type": "host",
+            "host": "localhost:5000"
+        }
+    ]
+}
