@@ -26,28 +26,45 @@ import (
 // 	input <- result
 // }
 
-func EstablishSocketIOServer(conf tools.ConfigFile, isConn chan bool) {
+func EstablishSocketIOServer(conf tools.ConfigFile, m *monitor.Monitor, isConn chan bool, queue chan string) {
 	server := socketio.NewServer(nil)
-	m := monitor.NewMonitor(conf.MonitorHost, "10000")
+	// m := monitor.NewMonitor(conf.MonitorHost, "10000")
 
-	server.OnError("", func(c socketio.Conn, err error) {
-		log.Printf("on error\n")
-	})
 	server.OnConnect("", func(c socketio.Conn) error {
 		log.Printf("on connect\n")
 		isConn <- true
 		time.Sleep(1 * time.Second)
 		return nil
 	})
+	server.OnError("", func(c socketio.Conn, err error) {
+		fmt.Println("get error", err)
+	})
 	server.OnEvent("/", "monitorQueue", func(s socketio.Conn, msg string) string {
 		// log.Printf("on message:%v\n", msg)
 		fmt.Println("gotten request for queue", msg)
+		// for i := 0; i < 3; i++ {
 		err := m.SendMessage(msg)
-		fmt.Println("message sended")
 		if err != nil {
 			log.Printf("failed to send message %v", err.Error())
 			// server.Emit("error", fmt.Sprintf("failed to send message:%v", err))
+		} else {
+			fmt.Println("message sended")
+			queue <- msg
+			return ""
 		}
+		fmt.Println("reconnect to monitor")
+		err = m.Reconnect()
+		if err != nil {
+			fmt.Println("failed to reconnect", err)
+			return ""
+		}
+		err = m.SendMessage(msg)
+		if err != nil {
+			fmt.Println("failed to send message", err)
+			return ""
+		}
+		// }
+		s.Emit("monitorQueue", "sucess")
 		return ""
 	})
 	server.OnDisconnect("", func(c socketio.Conn, s string) {
@@ -60,7 +77,7 @@ func EstablishSocketIOServer(conf tools.ConfigFile, isConn chan bool) {
 	http.Handle("/socket.io/", server)
 	// http.Handle("/", http.FileServer(http.Dir("./asset")))
 	log.Println("Socket io running at ", conf.SocketHost)
-	log.Fatal(http.ListenAndServe(conf.SocketHost, nil))
+	http.ListenAndServe(conf.SocketHost, nil)
 }
 
 type MonitorSocket struct {
@@ -71,19 +88,6 @@ func NewMonitor(m *monitor.Monitor) *MonitorSocket {
 	return &MonitorSocket{
 		Monitor: m,
 	}
-}
-
-func (m *MonitorSocket) onConnect(s socketio.Conn) error {
-	time.Sleep(2 * time.Second)
-	// s.Emit("monitor", m.DeviceID)
-	return nil
-}
-func (m *MonitorSocket) onQueue(s socketio.Conn, queue string) error {
-	err := m.Monitor.SendMessage(queue)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 // func handlerSocketIO()

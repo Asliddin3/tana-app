@@ -7,8 +7,6 @@ import (
 	"io"
 	"net"
 	"time"
-
-	"github.com/lenaten/hl7"
 )
 
 // var (
@@ -91,9 +89,9 @@ func (c DymindDF50) Start(conn net.Conn) {
 		defer c.Conn.Close()
 
 		for {
-			// buffer := make([]byte, 4098)
-			// _, err := c.Conn.Read(buffer)
-			buffer, err := hl7.ReadBuf(c.Conn)
+			buffer := make([]byte, 4098)
+			_, err := c.Conn.Read(buffer)
+			// buffer, err := hl7.ReadBuf(c.Conn)
 			if err == io.EOF {
 				fmt.Println("dconnectionStatus")
 				return
@@ -181,8 +179,6 @@ type OBXResult struct {
 	Norms string `json:"norms"`
 	Flag  string `json:"flag"`
 }
-
-
 
 func (c DymindDF50) getOrder() []string {
 	barcode := string(parser(c.AnalyzedData[3], []byte{'|'})[3])

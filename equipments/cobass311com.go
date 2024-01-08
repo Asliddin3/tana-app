@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lenaten/hl7"
 	"go.bug.st/serial"
 )
 
@@ -71,7 +70,10 @@ func (c *SerialCobass311) Start() {
 	// outF, err := os.Create(fmt.Sprintf("out/%s.txt", out))
 	// fmt.Println("create file error:", err)
 	for {
-		buffer, err := hl7.ReadBuf(port)
+		buffer := make([]byte, 4098)
+		_, err := port.Read(buffer)
+
+		// buffer, err := hl7.ReadBuf(port)
 
 		if err != nil {
 			fmt.Println("failed to read", err)

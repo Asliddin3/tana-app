@@ -2,6 +2,7 @@ package main
 
 import (
 	"ZettaGroup/Tana-App/equipments"
+	"ZettaGroup/Tana-App/monitor"
 	socket "ZettaGroup/Tana-App/server"
 	"ZettaGroup/Tana-App/tools"
 	"fmt"
@@ -58,10 +59,20 @@ func main() {
 		w.Resize(fyne.NewSize(800, 500))
 		w = t.showEquipments(w, conf)
 	} else if conf.Type == "monitor" {
-		isConn := make(chan bool)
-		go keepSocketIoServer(&conf, isConn)
 		w.Resize(fyne.NewSize(400, 300))
-		w = t.showMonitorStatus(w, isConn)
+		conn, err := net.Dial("tcp", t.Conf.MonitorHost+":10000")
+		if err != nil {
+			fmt.Println("failed to connect monitor", err.Error())
+			return
+		}
+		defer conn.Close()
+
+		m := monitor.NewMonitor(conn, t.Conf.MonitorHost, "10000")
+		m.IsConnected = true
+		isConn := make(chan bool)
+		queue := make(chan string)
+		go t.keepSocketIoServer(m, isConn, queue)
+		w = t.showMonitorStatus(w, m, isConn, queue)
 	} else if conf.Type == "printer" {
 		w.Resize(fyne.NewSize(800, 500))
 	}
@@ -69,9 +80,9 @@ func main() {
 	w.ShowAndRun()
 }
 
-func keepSocketIoServer(conf *tools.ConfigFile, isConn chan bool) {
+func (t *TanaApp) keepSocketIoServer(m *monitor.Monitor, isConn chan bool, queue chan string) {
 	for {
-		socket.EstablishSocketIOServer(*conf, isConn)
+		socket.EstablishSocketIOServer(t.Conf, m, isConn, queue)
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -165,31 +176,23 @@ func (t *TanaApp) checkAnalizatorStatus(text *canvas.Text, server equipments.Equ
 		time.Sleep(time.Second * 4)
 	}
 }
-func (t *TanaApp) checkMonitorConn(text *canvas.Text) {
+func (t *TanaApp) checkMonitorConn(text *canvas.Text, m *monitor.Monitor) {
 	for {
 		time.Sleep(time.Second * 2)
-		// select {
-		if t.Connect() {
+		conn, err := net.DialTimeout("tcp", m.Host+":"+m.Port, time.Second*2)
+		if err == nil {
 			text.Text = "Online"
 			text.Color = t.Connected
+			conn.Close()
 		} else {
 			text.Text = "Offline"
 			text.Color = t.StartCol
 		}
 		text.Refresh()
+	}
+}
 
-	}
-}
-func (t *TanaApp) Connect() bool {
-	conn, err := net.Dial("tcp", t.Conf.MonitorHost+":10000")
-	if err != nil {
-		fmt.Println("failed to connect monitor", err.Error())
-		return false
-	}
-	defer conn.Close()
-	return true
-}
-func (t *TanaApp) showMonitorStatus(w fyne.Window, isConnected chan bool) fyne.Window {
+func (t *TanaApp) showMonitorStatus(w fyne.Window, m *monitor.Monitor, isConnected chan bool, queue chan string) fyne.Window {
 	title := canvas.NewText("	 Monitor Connection", color.Black)
 
 	title.TextSize = 25
@@ -213,6 +216,10 @@ func (t *TanaApp) showMonitorStatus(w fyne.Window, isConnected chan bool) fyne.W
 	hostServer := canvas.NewText("Monitor", color.Black)
 	hostServer.TextSize = 25
 	hostServer.Resize(fyne.NewSize(200, 40))
+	numberServer := canvas.NewText("Navbat: ", color.Black)
+	numberServer.TextSize = 25
+	numberServer.Resize(fyne.NewSize(200, 40))
+
 	// equipmentText[i] = equipment
 	// color := canvas.NewRectangle(t.StartCol)
 	// color.Resize(fyne.NewSize(300, 30))
@@ -221,28 +228,15 @@ func (t *TanaApp) showMonitorStatus(w fyne.Window, isConnected chan bool) fyne.W
 	// btn := widget.NewButton("Start", func() {
 	// })
 	// go t.checkServerConn(lab, isConnected)
-	go t.checkMonitorConn(serverLab)
+	go t.checkMonitorConn(serverLab, m)
 	go t.checkSocketStatus(isConnected, lab)
+	go updateNumber(queue, numberServer)
 	// equipmentStatus[i] = lab
 	box1.Add(equipment)
 	box2.Add(lab)
 	box1.Add(hostServer)
 	box2.Add(serverLab)
-
-	// btn.Move(fyne.NewPos(size.Width+300, size.Height))
-	// container.NewVBox(btn)
-	// btn.SetText()
-	// }
-
-	// ex1 := canvas.NewText("Equipment 1", color.Black)
-	// ex1.TextSize = 40
-	// ex2 := canvas.NewText("Equipment 2", color.Black)
-	// ex2.TextSize = 40
-
-	// circle1 := canvas.NewCircle(color.NRGBA{A: 255, R: 255})
-	// circle1.StrokeWidth = 40
-	// content1 := container.NewGridWithColumns(2, circle1)
-	// content2 := container.NewGridWithColumns(2)
+	box1.Add(numberServer)
 
 	container.NewGridWrap(fyne.NewSize(400, 800))
 	mainBox := container.NewHBox(space, box1, space, box2)
@@ -254,4 +248,12 @@ func (t *TanaApp) showMonitorStatus(w fyne.Window, isConnected chan bool) fyne.W
 
 	w.SetContent(mainBox)
 	return w
+}
+
+func updateNumber(queue chan string, text *canvas.Text) {
+	for {
+		number := <-queue
+		text.Text = fmt.Sprintf("Navbat: %s", number)
+		text.Refresh()
+	}
 }

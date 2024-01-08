@@ -1,13 +1,13 @@
 module ZettaGroup/Tana-App
 
-go 1.21.1
+go 1.21
 
 require (
-	fyne.io/fyne/v2 v2.4.2
+	fyne.io/fyne/v2 v2.4.3
 	github.com/fogleman/gg v1.3.0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/googollee/go-socket.io v1.7.0
-	github.com/lenaten/hl7 v0.0.0-20181009090854-63c5c49a56d9
+	github.com/graarh/golang-socketio v0.0.0-20170510162725-2c44953b9b5f
 	go.bug.st/serial v1.6.1
 	golang.org/x/image v0.11.0
 )

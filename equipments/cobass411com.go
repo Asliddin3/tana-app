@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lenaten/hl7"
 	"go.bug.st/serial"
 )
 
@@ -66,7 +65,10 @@ func (c *SerialCobass411) handler(port serial.Port) {
 	// out, err := os.Create(fmt.Sprintf("logt/%s.txt", name))
 	// fmt.Println("create file error:", err)
 	for {
-		buffer, err := hl7.ReadBuf(port)
+		// buffer, err := hl7.ReadBuf(port)
+		buffer := make([]byte, 4098)
+		_, err := port.Read(buffer)
+
 		fmt.Println("gotten buffer", string(buffer))
 		// out.Write(buffer)
 		if err != nil {

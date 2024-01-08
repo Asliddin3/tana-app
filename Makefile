@@ -9,3 +9,4 @@ build:
 macbuild:
 	export GOOS=darwin
 	fyne package -os darwin -icon tana.png --name "Tana App"
+
