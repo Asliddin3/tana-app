@@ -6,9 +6,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	socketio "github.com/googollee/go-socket.io"
+	"github.com/googollee/go-socket.io/engineio"
+	"github.com/googollee/go-socket.io/engineio/transport"
+	"github.com/googollee/go-socket.io/engineio/transport/polling"
+	"github.com/googollee/go-socket.io/engineio/transport/websocket"
 )
 
 // 198.168.1.250
@@ -27,26 +32,38 @@ import (
 // }
 
 func EstablishSocketIOServer(conf tools.ConfigFile, m *monitor.Monitor, isConn chan bool, queue chan string) {
-	server := socketio.NewServer(nil)
+	// server := socketio.NewServer(nil)
 	// m := monitor.NewMonitor(conf.MonitorHost, "10000")
-
-	server.OnConnect("", func(c socketio.Conn) error {
+	var socket socketio.Server
+	opts := &engineio.Options{
+		Transports: []transport.Transport{
+			&polling.Transport{
+				CheckOrigin: allowOriginFunc,
+			},
+			&websocket.Transport{
+				CheckOrigin: allowOriginFunc,
+				// Proxy:       nil,
+			},
+		},
+	}
+	socket = *socketio.NewServer(opts)
+	socket.OnConnect("", func(c socketio.Conn) error {
 		log.Printf("on connect\n")
-		isConn <- true
-		time.Sleep(1 * time.Second)
+		// isConn <- true
 		return nil
 	})
-	server.OnError("", func(c socketio.Conn, err error) {
+	socket.OnError("", func(c socketio.Conn, err error) {
 		fmt.Println("get error", err)
 	})
-	server.OnEvent("/", "monitorQueue", func(s socketio.Conn, msg string) string {
+	socket.OnEvent("/", "monitorQueue", func(s socketio.Conn, message interface{}) string {
 		// log.Printf("on message:%v\n", msg)
+		msg := fmt.Sprintf("%v", message)
 		fmt.Println("gotten request for queue", msg)
 		// for i := 0; i < 3; i++ {
 		err := m.SendMessage(msg)
 		if err != nil {
 			log.Printf("failed to send message %v", err.Error())
-			// server.Emit("error", fmt.Sprintf("failed to send message:%v", err))
+			// socket.Emit("error", fmt.Sprintf("failed to send message:%v", err))
 		} else {
 			fmt.Println("message sended")
 			queue <- msg
@@ -56,28 +73,50 @@ func EstablishSocketIOServer(conf tools.ConfigFile, m *monitor.Monitor, isConn c
 		err = m.Reconnect()
 		if err != nil {
 			fmt.Println("failed to reconnect", err)
-			return ""
+			return "failed to reconnect"
 		}
 		err = m.SendMessage(msg)
 		if err != nil {
 			fmt.Println("failed to send message", err)
-			return ""
+			return "failed to send"
 		}
 		// }
-		s.Emit("monitorQueue", "sucess")
+		// s.Emit("monitorQueueResult", "sucess")
 		return ""
 	})
-	server.OnDisconnect("", func(c socketio.Conn, s string) {
+	socket.OnDisconnect("", func(c socketio.Conn, s string) {
 		log.Printf("on disconnect\n")
-		isConn <- false
+		// isConn <- false
 	})
-	go server.Serve()
-	defer server.Close()
 
-	http.Handle("/socket.io/", server)
-	// http.Handle("/", http.FileServer(http.Dir("./asset")))
-	log.Println("Socket io running at ", conf.SocketHost)
-	http.ListenAndServe(conf.SocketHost, nil)
+	log.Println("Serving at localhost:12345...")
+
+	ginserver := gin.Default()
+	corsConfig := cors.DefaultConfig()
+	// corsConfig.AllowOriginFunc = access
+	corsConfig.AllowWebSockets = true
+	corsConfig.AllowOrigins = []string{"*"}
+	corsConfig.AllowCredentials = true
+	corsConfig.AllowHeaders = []string{"*"}
+	corsConfig.ExposeHeaders = []string{"*"}
+
+	ginserver.Use(
+		cors.New(corsConfig),
+	)
+	ginserver.GET("/socket.io/*any", gin.WrapH(&socket))
+	ginserver.POST("/socket.io/*any", gin.WrapH(&socket))
+	go func() {
+		if err := socket.Serve(); err != nil {
+			log.Fatalf("socketio listen error: %s\n", err)
+		}
+	}()
+	defer socket.Close()
+
+	log.Fatal(ginserver.Run(conf.SocketHost))
+}
+
+var allowOriginFunc = func(r *http.Request) bool {
+	return true
 }
 
 type MonitorSocket struct {

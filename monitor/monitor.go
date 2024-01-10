@@ -64,10 +64,8 @@ type Monitor struct {
 	IsConnected bool
 }
 
-func NewMonitor(conn net.Conn, host string, port string) *Monitor {
-
+func NewMonitor(host string, port string) *Monitor {
 	return &Monitor{
-		conn:        &conn,
 		Host:        host,
 		Port:        port,
 		IsConnected: false,

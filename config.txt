@@ -2,7 +2,7 @@
     "host": "localhost:9201",
     "monitorHost": "192.168.1.199",
     "type": "lis",
-    "socketHost": "localhost:12345",
+    "socketHost": ":5001",
     "equipments": [
         {
             "name": "Maglumi800 1",
@@ -20,7 +20,7 @@
             "name": "Iflash1200 1",
             "equipment": "Iflash1200",
             "type": "host",
-            "host": "localhost:5000"
+            "host": "localhost:5002"
         }
     ]
 }

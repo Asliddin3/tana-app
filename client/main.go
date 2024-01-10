@@ -38,7 +38,7 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	c, err := gosocketio.Dial(
-		gosocketio.GetUrl("127.0.0.1", 12345, false),
+		gosocketio.GetUrl("127.0.0.1", 5001, false),
 		transport.GetDefaultWebsocketTransport())
 	if err != nil {
 		log.Fatal(err)
